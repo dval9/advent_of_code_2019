@@ -12,8 +12,8 @@ namespace advent_of_code_2019
         {
             //Problem1(@"..\..\..\problem1.txt");
             //Problem2(@"..\..\..\problem2.txt");
-            Problem3(@"..\..\..\problem3.txt");
-            //Problem4(@"..\..\..\problem4.txt");
+            //Problem3(@"..\..\..\problem3.txt");
+            Problem4(@"..\..\..\problem4.txt");
             //Problem5(@"..\..\..\problem5.txt");
             //Problem6(@"..\..\..\problem6.txt");
             //Problem7(@"..\..\..\problem7.txt");
@@ -169,7 +169,7 @@ namespace advent_of_code_2019
                             if (!wire1.ContainsKey((x1, y1)))
                                 wire1.Add((x1, y1), c1);
                             c1++;
-                        }                            
+                        }
                         break;
                     case 'L':
                         for (int i = 0; i < int.Parse(s.Substring(1)); i++)
@@ -178,7 +178,7 @@ namespace advent_of_code_2019
                             if (!wire1.ContainsKey((x1, y1)))
                                 wire1.Add((x1, y1), c1);
                             c1++;
-                        }                            
+                        }
                         break;
                     case 'U':
                         for (int i = 0; i < int.Parse(s.Substring(1)); i++)
@@ -187,7 +187,7 @@ namespace advent_of_code_2019
                             if (!wire1.ContainsKey((x1, y1)))
                                 wire1.Add((x1, y1), c1);
                             c1++;
-                        }                         
+                        }
                         break;
                     case 'D':
                         for (int i = 0; i < int.Parse(s.Substring(1)); i++)
@@ -196,7 +196,7 @@ namespace advent_of_code_2019
                             if (!wire1.ContainsKey((x1, y1)))
                                 wire1.Add((x1, y1), c1);
                             c1++;
-                        }                            
+                        }
                         break;
                 }
             }
@@ -253,16 +253,33 @@ namespace advent_of_code_2019
 
         /// <summary>
         /// DAY 4
-        /// Part 1: 
-        /// Part 2: 
+        /// Part 1: Count strings matching criteria, digits must ascend, must have matching pair, be within input range.
+        /// Part 2: Must have ONLY matching pairs, not longer.
         /// </summary>
         /// <param name="__input">File name to read the input</param>
         static void Problem4(string __input)
         {
             string part1 = "";
             string part2 = "";
-            char[] delims = { ',' };
+            char[] delims = { '-' };
             var line = File.ReadAllLines(__input);
+            int min = int.Parse(line[0].Split(delims, StringSplitOptions.RemoveEmptyEntries)[0]);
+            int max = int.Parse(line[0].Split(delims, StringSplitOptions.RemoveEmptyEntries)[1]);
+
+            int count1 = 0;
+            int count2 = 0;
+            for (int i = min; i <= max; i++)
+            {
+                var num = i.ToString();
+                var sort = num.OrderBy(x => x);
+                if (Enumerable.SequenceEqual(num, sort) && sort.GroupBy(x => x).Where(x => x.Count() >= 2).Count() > 0)
+                    count1++;
+                if (Enumerable.SequenceEqual(num, sort) && sort.GroupBy(x => x).Where(x => x.Count() == 2).Count() > 0)
+                    count2++;
+            }
+
+            part1 = count1.ToString();
+            part2 = count2.ToString();
 
             Console.WriteLine("Day 4, Problem 1: " + part1);
             Console.WriteLine("Day 4, Problem 2: " + part2);
