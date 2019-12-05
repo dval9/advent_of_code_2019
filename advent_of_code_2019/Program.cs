@@ -13,8 +13,8 @@ namespace advent_of_code_2019
             //Problem1(@"..\..\..\problem1.txt");
             //Problem2(@"..\..\..\problem2.txt");
             //Problem3(@"..\..\..\problem3.txt");
-            Problem4(@"..\..\..\problem4.txt");
-            //Problem5(@"..\..\..\problem5.txt");
+            //Problem4(@"..\..\..\problem4.txt");
+            Problem5(@"..\..\..\problem5.txt");
             //Problem6(@"..\..\..\problem6.txt");
             //Problem7(@"..\..\..\problem7.txt");
             //Problem8(@"..\..\..\problem8.txt");
@@ -92,8 +92,6 @@ namespace advent_of_code_2019
             program[1] = 12;
             program[2] = 2;
 
-            //program = new int[9] { 1, 1, 1, 4, 99, 5, 6, 0, 99 };
-
             part1 = IntCodeComputer(program)[0].ToString();
 
             for (int i = 0; i <= 99; i++)
@@ -135,7 +133,7 @@ namespace advent_of_code_2019
                         break;
                 }
             }
-            ip++;
+
             return program;
         }
 
@@ -287,8 +285,8 @@ namespace advent_of_code_2019
 
         /// <summary>
         /// DAY 5
-        /// Part 1: 
-        /// Part 2: 
+        /// Part 1: Update IntCode program simulator, add input/output and immediate values
+        /// Part 2: Add jumps and equal tests
         /// </summary>
         /// <param name="__input">File name to read the input</param>
         static void Problem5(string __input)
@@ -296,10 +294,84 @@ namespace advent_of_code_2019
             string part1 = "";
             string part2 = "";
             char[] delims = { ',' };
-            var line = File.ReadAllLines(__input);
+            var line = File.ReadAllLines(__input)[0].Split(delims, StringSplitOptions.RemoveEmptyEntries);
+
+            int[] program = Array.ConvertAll(line, s => int.Parse(s));
+            List<int> input = new List<int> { 1 };
+            List<int> output = new List<int>();
+            IntCodeComputerV2(program, input, output);
+
+            part1 = output[output.Count - 1].ToString();
+
+            program = Array.ConvertAll(line, s => int.Parse(s));
+            input = new List<int> { 5 };
+            output = new List<int>();
+            IntCodeComputerV2(program, input, output);
+
+            part2 = output[output.Count - 1].ToString();
 
             Console.WriteLine("Day 5, Problem 1: " + part1);
             Console.WriteLine("Day 5, Problem 2: " + part2);
+        }
+
+        static int[] IntCodeComputerV2(int[] program, List<int> input, List<int> output)
+        {
+            int ip = 0;
+            while (program[ip] != 99)
+            {
+                int opcode = program[ip] % 100;
+                var parameters = (program[ip] / 100).ToString().Reverse().Select(x => int.Parse(x.ToString())).ToList();
+                parameters.Add(0);
+                
+                switch (opcode)
+                {
+                    case 1:
+                        int a = parameters[0] == 0 ? program[program[ip + 1]] : program[ip + 1];
+                        int b = parameters[1] == 0 ? program[program[ip + 2]] : program[ip + 2];
+                        program[program[ip + 3]] = a + b;
+                        ip += 4;
+                        break;
+                    case 2:
+                        a = parameters[0] == 0 ? program[program[ip + 1]] : program[ip + 1];
+                        b = parameters[1] == 0 ? program[program[ip + 2]] : program[ip + 2];
+                        program[program[ip + 3]] = a * b;
+                        ip += 4;
+                        break;
+                    case 3:
+                        program[program[ip + 1]] = input[0];
+                        ip += 2;
+                        break;
+                    case 4:
+                        a = parameters[0] == 0 ? program[program[ip + 1]] : program[ip + 1];
+                        output.Add(a);
+                        ip += 2;
+                        break;
+                    case 5:
+                        a = parameters[0] == 0 ? program[program[ip + 1]] : program[ip + 1];
+                        b = parameters[1] == 0 ? program[program[ip + 2]] : program[ip + 2];
+                        ip = a != 0 ? b : ip + 3;
+                        break;
+                    case 6:
+                        a = parameters[0] == 0 ? program[program[ip + 1]] : program[ip + 1];
+                        b = parameters[1] == 0 ? program[program[ip + 2]] : program[ip + 2];
+                        ip = a == 0 ? b : ip + 3;
+                        break;
+                    case 7:
+                        a = parameters[0] == 0 ? program[program[ip + 1]] : program[ip + 1];
+                        b = parameters[1] == 0 ? program[program[ip + 2]] : program[ip + 2];
+                        program[program[ip + 3]] = a < b ? 1 : 0;
+                        ip += 4;
+                        break;
+                    case 8:
+                        a = parameters[0] == 0 ? program[program[ip + 1]] : program[ip + 1];
+                        b = parameters[1] == 0 ? program[program[ip + 2]] : program[ip + 2];
+                        program[program[ip + 3]] = a == b ? 1 : 0;
+                        ip += 4;
+                        break;
+                }
+            }
+
+            return program;
         }
 
         /// <summary>
