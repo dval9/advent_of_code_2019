@@ -14,8 +14,8 @@ namespace advent_of_code_2019
             //Problem2(@"..\..\..\problem2.txt");
             //Problem3(@"..\..\..\problem3.txt");
             //Problem4(@"..\..\..\problem4.txt");
-            Problem5(@"..\..\..\problem5.txt");
-            //Problem6(@"..\..\..\problem6.txt");
+            //Problem5(@"..\..\..\problem5.txt");
+            Problem6(@"..\..\..\problem6.txt");
             //Problem7(@"..\..\..\problem7.txt");
             //Problem8(@"..\..\..\problem8.txt");
             //Problem9(@"..\..\..\problem9.txt");
@@ -322,7 +322,7 @@ namespace advent_of_code_2019
                 int opcode = program[ip] % 100;
                 var parameters = (program[ip] / 100).ToString().Reverse().Select(x => int.Parse(x.ToString())).ToList();
                 parameters.Add(0);
-                
+
                 switch (opcode)
                 {
                     case 1:
@@ -376,16 +376,54 @@ namespace advent_of_code_2019
 
         /// <summary>
         /// DAY 6
-        /// Part 1: 
-        /// Part 2: 
+        /// Part 1: Count the number of direct and indirect orbits.
+        /// Part 2: Count distance to traverse from YOU to SAN.
         /// </summary>
         /// <param name="__input">File name to read the input</param>
         static void Problem6(string __input)
         {
             string part1 = "";
             string part2 = "";
-            char[] delims = { ',' };
+            char[] delims = { ')' };
             var line = File.ReadAllLines(__input);
+            //line = new string[] { "COM)B", "B)C", "C)D", "D)E", "E)F", "B)G", "G)H", "D)I", "E)J", "J)K", "K)L", "K)YOU", "I)SAN" };
+
+            int count = 0;
+            Dictionary<string, string> orbits = new Dictionary<string, string>();
+            Queue<string> planets = new Queue<string>();
+            foreach (var l in line)
+            {
+                var x = l.Split(delims, StringSplitOptions.RemoveEmptyEntries);
+                orbits.Add(x[1], x[0]);
+                planets.Enqueue(x[1]);
+            }
+
+            while (planets.Count != 0)
+            {
+                var x = planets.Dequeue();
+                count++;
+                if (orbits.ContainsKey(x))
+                    planets.Enqueue(orbits[x]);
+            }
+            count -= orbits.Keys.Count;
+            part1 = count.ToString();
+
+            var key = "YOU";
+            var path1 = new List<string>();
+            while (orbits.ContainsKey(key))
+            {
+                path1.Add(orbits[key]);
+                key = orbits[key];
+            }
+            key = "SAN";
+            var path2 = new List<string>();
+            while (orbits.ContainsKey(key))
+            {
+                path2.Add(orbits[key]);
+                key = orbits[key];
+            }
+            var intersects = path1.Intersect(path2);
+            part2 = (path1.Except(intersects).Count() + path2.Except(intersects).Count()).ToString();
 
             Console.WriteLine("Day 6, Problem 1: " + part1);
             Console.WriteLine("Day 6, Problem 2: " + part2);
