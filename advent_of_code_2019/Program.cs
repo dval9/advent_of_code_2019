@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.IO;
-using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 
 namespace advent_of_code_2019
 {
@@ -15,11 +15,11 @@ namespace advent_of_code_2019
             //Problem3(@"..\..\..\problem3.txt");
             //Problem4(@"..\..\..\problem4.txt");
             //Problem5(@"..\..\..\problem5.txt");
-            Problem6(@"..\..\..\problem6.txt");
+            //Problem6(@"..\..\..\problem6.txt");
             //Problem7(@"..\..\..\problem7.txt");
             //Problem8(@"..\..\..\problem8.txt");
             //Problem9(@"..\..\..\problem9.txt");
-            //Problem10(@"..\..\..\problem10.txt");
+            Problem10(@"..\..\..\problem10.txt");
             //Problem11(@"..\..\..\problem11.txt");
             //Problem12(@"..\..\..\problem12.txt");
             //Problem13(@"..\..\..\problem13.txt");
@@ -431,8 +431,8 @@ namespace advent_of_code_2019
 
         /// <summary>
         /// DAY 7
-        /// Part 1: 
-        /// Part 2: 
+        /// Part 1: Run IntCode through amplifiers, find max signal for a phase setup.
+        /// Part 2: Run async to amplify through repeting. Run by step through, or else some stupid race conditions.
         /// </summary>
         /// <param name="__input">File name to read the input</param>
         static void Problem7(string __input)
@@ -440,16 +440,215 @@ namespace advent_of_code_2019
             string part1 = "";
             string part2 = "";
             char[] delims = { ',' };
-            var line = File.ReadAllLines(__input);
+            var line = File.ReadAllLines(__input)[0].Split(delims, StringSplitOptions.RemoveEmptyEntries);
+
+            int max_signal = 0;
+            var phases = GetPermutations(Enumerable.Range(0, 5), 5).Select(x => x.ToArray());
+
+            foreach (var phase in phases)
+            {
+                var output = 0;
+                output = IntCodeComputerV3(Array.ConvertAll(line, s => int.Parse(s)), new List<int> { phase[0], output });
+                output = IntCodeComputerV3(Array.ConvertAll(line, s => int.Parse(s)), new List<int> { phase[1], output });
+                output = IntCodeComputerV3(Array.ConvertAll(line, s => int.Parse(s)), new List<int> { phase[2], output });
+                output = IntCodeComputerV3(Array.ConvertAll(line, s => int.Parse(s)), new List<int> { phase[3], output });
+                output = IntCodeComputerV3(Array.ConvertAll(line, s => int.Parse(s)), new List<int> { phase[4], output });
+
+                if (output > max_signal)
+                    max_signal = output;
+            }
+            part1 = max_signal.ToString();
+
+            max_signal = 0;
+            phases = GetPermutations(Enumerable.Range(5, 5), 5).Select(x => x.ToArray());
+
+            foreach (var phase in phases)
+            {
+
+                var thread = 0;
+                p7_inputs = new int[] { 0, 0, 0, 0, 0, 0 };
+                p7_input_ready = new bool[] { true, false, false, false, false };
+
+                Task a1 = Task.Factory.StartNew(() => IntCodeComputerV4(Array.ConvertAll(line, s => int.Parse(s)), phase[thread], thread++));
+                Task a2 = Task.Factory.StartNew(() => IntCodeComputerV4(Array.ConvertAll(line, s => int.Parse(s)), phase[thread], thread++));
+                Task a3 = Task.Factory.StartNew(() => IntCodeComputerV4(Array.ConvertAll(line, s => int.Parse(s)), phase[thread], thread++));
+                Task a4 = Task.Factory.StartNew(() => IntCodeComputerV4(Array.ConvertAll(line, s => int.Parse(s)), phase[thread], thread++));
+                Task a5 = Task.Factory.StartNew(() => IntCodeComputerV4(Array.ConvertAll(line, s => int.Parse(s)), phase[thread], thread++));
+
+                Task.WaitAll(a1, a2, a3, a4, a5);
+
+                if (p7_inputs[5] > max_signal)
+                    max_signal = p7_inputs[5];
+            }
+            part2 = max_signal.ToString();
+
 
             Console.WriteLine("Day 7, Problem 1: " + part1);
             Console.WriteLine("Day 7, Problem 2: " + part2);
         }
 
+        static IEnumerable<IEnumerable<T>> GetPermutations<T>(IEnumerable<T> list, int length)
+        {
+            if (length == 1)
+                return list.Select(t => new T[] { t });
+            return GetPermutations(list, length - 1).SelectMany(t => list.Where(e => !t.Contains(e)), (t1, t2) => t1.Concat(new T[] { t2 }));
+        }
+
+        static int IntCodeComputerV3(int[] program, List<int> input)
+        {
+            int ip = 0;
+            int iv = 0;
+            List<int> output = new List<int>();
+            while (program[ip] != 99)
+            {
+                int opcode = program[ip] % 100;
+                var parameters = (program[ip] / 100).ToString().Reverse().Select(x => int.Parse(x.ToString())).ToList();
+                parameters.Add(0);
+
+                switch (opcode)
+                {
+                    case 1:
+                        int a = parameters[0] == 0 ? program[program[ip + 1]] : program[ip + 1];
+                        int b = parameters[1] == 0 ? program[program[ip + 2]] : program[ip + 2];
+                        program[program[ip + 3]] = a + b;
+                        ip += 4;
+                        break;
+                    case 2:
+                        a = parameters[0] == 0 ? program[program[ip + 1]] : program[ip + 1];
+                        b = parameters[1] == 0 ? program[program[ip + 2]] : program[ip + 2];
+                        program[program[ip + 3]] = a * b;
+                        ip += 4;
+                        break;
+                    case 3:
+                        program[program[ip + 1]] = input[iv++];
+                        ip += 2;
+                        break;
+                    case 4:
+                        a = parameters[0] == 0 ? program[program[ip + 1]] : program[ip + 1];
+                        output.Add(a);
+                        ip += 2;
+                        break;
+                    case 5:
+                        a = parameters[0] == 0 ? program[program[ip + 1]] : program[ip + 1];
+                        b = parameters[1] == 0 ? program[program[ip + 2]] : program[ip + 2];
+                        ip = a != 0 ? b : ip + 3;
+                        break;
+                    case 6:
+                        a = parameters[0] == 0 ? program[program[ip + 1]] : program[ip + 1];
+                        b = parameters[1] == 0 ? program[program[ip + 2]] : program[ip + 2];
+                        ip = a == 0 ? b : ip + 3;
+                        break;
+                    case 7:
+                        a = parameters[0] == 0 ? program[program[ip + 1]] : program[ip + 1];
+                        b = parameters[1] == 0 ? program[program[ip + 2]] : program[ip + 2];
+                        program[program[ip + 3]] = a < b ? 1 : 0;
+                        ip += 4;
+                        break;
+                    case 8:
+                        a = parameters[0] == 0 ? program[program[ip + 1]] : program[ip + 1];
+                        b = parameters[1] == 0 ? program[program[ip + 2]] : program[ip + 2];
+                        program[program[ip + 3]] = a == b ? 1 : 0;
+                        ip += 4;
+                        break;
+                }
+            }
+
+            return output.ToArray()[0];
+        }
+
+#pragma warning disable IDE0044 // Add readonly modifier
+        static int[] p7_inputs;
+        static bool[] p7_input_ready;
+#pragma warning restore IDE0044 // Add readonly modifier
+#pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
+        static async Task IntCodeComputerV4(int[] program, int phase, int thread)
+#pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
+        {
+            int ip = 0;
+            bool init = true;
+            while (program[ip] != 99)
+            {
+                int opcode = program[ip] % 100;
+                var parameters = (program[ip] / 100).ToString().Reverse().Select(x => int.Parse(x.ToString())).ToList();
+                parameters.Add(0);
+
+                switch (opcode)
+                {
+                    case 1:
+                        int a = parameters[0] == 0 ? program[program[ip + 1]] : program[ip + 1];
+                        int b = parameters[1] == 0 ? program[program[ip + 2]] : program[ip + 2];
+                        program[program[ip + 3]] = a + b;
+                        ip += 4;
+                        break;
+                    case 2:
+                        a = parameters[0] == 0 ? program[program[ip + 1]] : program[ip + 1];
+                        b = parameters[1] == 0 ? program[program[ip + 2]] : program[ip + 2];
+                        program[program[ip + 3]] = a * b;
+                        ip += 4;
+                        break;
+                    case 3:
+                        int i;
+                        if (init)
+                        {
+                            i = phase;
+                            init = false;
+                        }
+                        else
+                        {
+                            while (!p7_input_ready[thread])
+                                ;
+                            i = p7_inputs[thread];
+                            p7_input_ready[thread] = false;
+                        }
+                        program[program[ip + 1]] = i;
+                        ip += 2;
+                        break;
+                    case 4:
+                        a = parameters[0] == 0 ? program[program[ip + 1]] : program[ip + 1];
+                        if (thread == 4)
+                        {
+                            p7_inputs[5] = a;
+                            p7_inputs[0] = a;
+                            p7_input_ready[0] = true;
+                        }
+                        else
+                        {
+                            p7_inputs[thread + 1] = a;
+                            p7_input_ready[thread + 1] = true;
+                        }
+                        ip += 2;
+                        break;
+                    case 5:
+                        a = parameters[0] == 0 ? program[program[ip + 1]] : program[ip + 1];
+                        b = parameters[1] == 0 ? program[program[ip + 2]] : program[ip + 2];
+                        ip = a != 0 ? b : ip + 3;
+                        break;
+                    case 6:
+                        a = parameters[0] == 0 ? program[program[ip + 1]] : program[ip + 1];
+                        b = parameters[1] == 0 ? program[program[ip + 2]] : program[ip + 2];
+                        ip = a == 0 ? b : ip + 3;
+                        break;
+                    case 7:
+                        a = parameters[0] == 0 ? program[program[ip + 1]] : program[ip + 1];
+                        b = parameters[1] == 0 ? program[program[ip + 2]] : program[ip + 2];
+                        program[program[ip + 3]] = a < b ? 1 : 0;
+                        ip += 4;
+                        break;
+                    case 8:
+                        a = parameters[0] == 0 ? program[program[ip + 1]] : program[ip + 1];
+                        b = parameters[1] == 0 ? program[program[ip + 2]] : program[ip + 2];
+                        program[program[ip + 3]] = a == b ? 1 : 0;
+                        ip += 4;
+                        break;
+                }
+            }
+            return;
+        }
+
         /// <summary>
         /// DAY 8
-        /// Part 1: 
-        /// Part 2: 
+        /// Part 1: Find layer with least 0, what is count of 1* count of 2.
+        /// Part 2: What message does the image have.
         /// </summary>
         /// <param name="__input">File name to read the input</param>
         static void Problem8(string __input)
@@ -459,14 +658,63 @@ namespace advent_of_code_2019
             char[] delims = { ',' };
             var line = File.ReadAllLines(__input);
 
+            int width = 25;
+            int height = 6;
+            int layer_size = width * height;
+            int layers_count = line[0].Length / layer_size;
+            var layers = new List<string>();
+
+            int best_layer = -1;
+            int best_c = 999;
+
+            for (int i = 0; i < layers_count; i++)
+            {
+                var layer = line[0].Substring(i * layer_size, layer_size);
+                layers.Add(layer);
+                var c = layer.Count(x => x == '0');
+                if (c < best_c)
+                {
+                    best_c = c;
+                    best_layer = i;
+                }
+
+            }
+
+            var best = line[0].Substring(best_layer * layer_size, layer_size);
+            var c1 = best.Count(x => x == '1');
+            var c2 = best.Count(x => x == '2');
+            part1 = (c1 * c2).ToString();
+
+            var message = layers[0].ToList();
+            for (int i = 0; i < message.Count; i++)
+            {
+                if (message[i] == '2')
+                {
+                    for (int j = 1; j < layers.Count; j++)
+                    {
+                        if (layers[j][i] != '2')
+                        {
+                            message[i] = layers[j][i];
+                            break;
+                        }
+                    }
+                }
+            }
+            part2 = new string(message.ToArray());
+            part2 = part2.Replace('0', ' ');
+
             Console.WriteLine("Day 8, Problem 1: " + part1);
-            Console.WriteLine("Day 8, Problem 2: " + part2);
+            Console.WriteLine("Day 8, Problem 2: ");
+            for (int i = 0; i < height; i++)
+            {
+                Console.WriteLine(part2.Substring(width * i, width));
+            }
         }
 
         /// <summary>
         /// DAY 9
-        /// Part 1: 
-        /// Part 2: 
+        /// Part 1: Add relative offsets to the intcomputer
+        /// Part 2: run the int computer.
         /// </summary>
         /// <param name="__input">File name to read the input</param>
         static void Problem9(string __input)
@@ -474,10 +722,326 @@ namespace advent_of_code_2019
             string part1 = "";
             string part2 = "";
             char[] delims = { ',' };
-            var line = File.ReadAllLines(__input);
+            var line = File.ReadAllLines(__input)[0].Split(delims, StringSplitOptions.RemoveEmptyEntries);
+
+            long[] program = Array.ConvertAll(line, s => long.Parse(s));
+            for (int i = 0; i < 10000; i++)
+                program = program.Append(0).ToArray();
+            List<long> input = new List<long> { 1 };
+            List<long> output = new List<long>();
+            IntCodeComputerV5(program, input, output);
+
+            part1 = output[0].ToString();
+
+            program = Array.ConvertAll(line, s => long.Parse(s));
+            for (int i = 0; i < 10000; i++)
+                program = program.Append(0).ToArray();
+            input = new List<long> { 2 };
+            output = new List<long>();
+            IntCodeComputerV5(program, input, output);
+
+            part2 = output[0].ToString();
 
             Console.WriteLine("Day 9, Problem 1: " + part1);
             Console.WriteLine("Day 9, Problem 2: " + part2);
+        }
+
+        static long[] IntCodeComputerV5(long[] program, List<long> input, List<long> output)
+        {
+            long ip = 0;
+            long rb = 0;
+            while (program[ip] != 99)
+            {
+                long opcode = program[ip] % 100;
+                var parameters = (program[ip] / 100).ToString().Reverse().Select(x => int.Parse(x.ToString())).ToList();
+                parameters.Add(0);
+
+                switch (opcode)
+                {
+                    case 1:
+                        long a = 0;
+                        long b = 0;
+                        long c = 0;
+                        switch (parameters[0])
+                        {
+                            case 0:
+                                a = program[program[ip + 1]];
+                                break;
+                            case 1:
+                                a = program[ip + 1];
+                                break;
+                            case 2:
+                                a = program[program[ip + 1] + rb];
+                                break;
+                        }
+                        switch (parameters[1])
+                        {
+                            case 0:
+                                b = program[program[ip + 2]];
+                                break;
+                            case 1:
+                                b = program[ip + 2];
+                                break;
+                            case 2:
+                                b = program[program[ip + 2] + rb];
+                                break;
+                        }
+                        switch (parameters[2])
+                        {
+                            case 0:
+                                c = program[ip + 3];
+                                break;
+                            case 1:
+                                c = ip + 3;
+                                break;
+                            case 2:
+                                c = program[ip + 3] + rb;
+                                break;
+                        }
+                        program[c] = a + b;
+                        ip += 4;
+                        break;
+                    case 2:
+                        a = 0;
+                        b = 0;
+                        c = 0;
+                        switch (parameters[0])
+                        {
+                            case 0:
+                                a = program[program[ip + 1]];
+                                break;
+                            case 1:
+                                a = program[ip + 1];
+                                break;
+                            case 2:
+                                a = program[program[ip + 1] + rb];
+                                break;
+                        }
+                        switch (parameters[1])
+                        {
+                            case 0:
+                                b = program[program[ip + 2]];
+                                break;
+                            case 1:
+                                b = program[ip + 2];
+                                break;
+                            case 2:
+                                b = program[program[ip + 2] + rb];
+                                break;
+                        }
+                        switch (parameters[2])
+                        {
+                            case 0:
+                                c = program[ip + 3];
+                                break;
+                            case 1:
+                                c = ip + 3;
+                                break;
+                            case 2:
+                                c = program[ip + 3] + rb;
+                                break;
+                        }
+                        program[c] = a * b;
+                        ip += 4;
+                        break;
+                    case 3:
+                        a = 0;
+                        switch (parameters[0])
+                        {
+                            case 0:
+                                a = program[ip + 1];
+                                break;
+                            case 1:
+                                a = ip + 1;
+                                break;
+                            case 2:
+                                a = program[ip + 1] + rb;
+                                break;
+                        }
+                        program[a] = input[0];
+                        ip += 2;
+                        break;
+                    case 4:
+                        a = 0;
+                        switch (parameters[0])
+                        {
+                            case 0:
+                                a = program[program[ip + 1]];
+                                break;
+                            case 1:
+                                a = program[ip + 1];
+                                break;
+                            case 2:
+                                a = program[program[ip + 1] + rb];
+                                break;
+                        }
+                        output.Add(a);
+                        ip += 2;
+                        break;
+                    case 5:
+                        a = 0;
+                        b = 0;
+                        switch (parameters[0])
+                        {
+                            case 0:
+                                a = program[program[ip + 1]];
+                                break;
+                            case 1:
+                                a = program[ip + 1];
+                                break;
+                            case 2:
+                                a = program[program[ip + 1] + rb];
+                                break;
+                        }
+                        switch (parameters[1])
+                        {
+                            case 0:
+                                b = program[program[ip + 2]];
+                                break;
+                            case 1:
+                                b = program[ip + 2];
+                                break;
+                            case 2:
+                                b = program[program[ip + 2] + rb];
+                                break;
+                        }
+                        ip = a != 0 ? b : ip + 3;
+                        break;
+                    case 6:
+                        a = 0;
+                        b = 0;
+                        switch (parameters[0])
+                        {
+                            case 0:
+                                a = program[program[ip + 1]];
+                                break;
+                            case 1:
+                                a = program[ip + 1];
+                                break;
+                            case 2:
+                                a = program[program[ip + 1] + rb];
+                                break;
+                        }
+                        switch (parameters[1])
+                        {
+                            case 0:
+                                b = program[program[ip + 2]];
+                                break;
+                            case 1:
+                                b = program[ip + 2];
+                                break;
+                            case 2:
+                                b = program[program[ip + 2] + rb];
+                                break;
+                        }
+                        ip = a == 0 ? b : ip + 3;
+                        break;
+                    case 7:
+                        a = 0;
+                        b = 0;
+                        c = 0;
+                        switch (parameters[0])
+                        {
+                            case 0:
+                                a = program[program[ip + 1]];
+                                break;
+                            case 1:
+                                a = program[ip + 1];
+                                break;
+                            case 2:
+                                a = program[program[ip + 1] + rb];
+                                break;
+                        }
+                        switch (parameters[1])
+                        {
+                            case 0:
+                                b = program[program[ip + 2]];
+                                break;
+                            case 1:
+                                b = program[ip + 2];
+                                break;
+                            case 2:
+                                b = program[program[ip + 2] + rb];
+                                break;
+                        }
+                        switch (parameters[2])
+                        {
+                            case 0:
+                                c = program[ip + 3];
+                                break;
+                            case 1:
+                                c = ip + 3;
+                                break;
+                            case 2:
+                                c = program[ip + 3] + rb;
+                                break;
+                        }
+                        program[c] = a < b ? 1 : 0;
+                        ip += 4;
+                        break;
+                    case 8:
+                        a = 0;
+                        b = 0;
+                        c = 0;
+                        switch (parameters[0])
+                        {
+                            case 0:
+                                a = program[program[ip + 1]];
+                                break;
+                            case 1:
+                                a = program[ip + 1];
+                                break;
+                            case 2:
+                                a = program[program[ip + 1] + rb];
+                                break;
+                        }
+                        switch (parameters[1])
+                        {
+                            case 0:
+                                b = program[program[ip + 2]];
+                                break;
+                            case 1:
+                                b = program[ip + 2];
+                                break;
+                            case 2:
+                                b = program[program[ip + 2] + rb];
+                                break;
+                        }
+                        switch (parameters[2])
+                        {
+                            case 0:
+                                c = program[ip + 3];
+                                break;
+                            case 1:
+                                c = ip + 3;
+                                break;
+                            case 2:
+                                c = program[ip + 3] + rb;
+                                break;
+                        }
+                        program[c] = a == b ? 1 : 0;
+                        ip += 4;
+                        break;
+                    case 9:
+                        a = 0;
+                        switch (parameters[0])
+                        {
+                            case 0:
+                                a = program[program[ip + 1]];
+                                break;
+                            case 1:
+                                a = program[ip + 1];
+                                break;
+                            case 2:
+                                a = program[program[ip + 1] + rb];
+                                break;
+                        }
+                        rb += a;
+                        ip += 2;
+                        break;
+                }
+            }
+            return program;
         }
 
         /// <summary>
