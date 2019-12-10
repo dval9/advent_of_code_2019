@@ -19,8 +19,8 @@ namespace advent_of_code_2019
             //Problem7(@"..\..\..\problem7.txt");
             //Problem8(@"..\..\..\problem8.txt");
             //Problem9(@"..\..\..\problem9.txt");
-            Problem10(@"..\..\..\problem10.txt");
-            //Problem11(@"..\..\..\problem11.txt");
+            //Problem10(@"..\..\..\problem10.txt");
+            Problem11(@"..\..\..\problem11.txt");
             //Problem12(@"..\..\..\problem12.txt");
             //Problem13(@"..\..\..\problem13.txt");
             //Problem14(@"..\..\..\problem14.txt");
@@ -1046,8 +1046,8 @@ namespace advent_of_code_2019
 
         /// <summary>
         /// DAY 10
-        /// Part 1: 
-        /// Part 2: 
+        /// Part 1: count astroids from each point, find the one that can see the most.
+        /// Part 2: remove in order clockwise, what is 200th to be removed.
         /// </summary>
         /// <param name="__input">File name to read the input</param>
         static void Problem10(string __input)
@@ -1056,6 +1056,82 @@ namespace advent_of_code_2019
             string part2 = "";
             char[] delims = { ',' };
             var line = File.ReadAllLines(__input);
+                        
+            int maxX = line[0].Length;
+            int maxY = line.Length;
+            Dictionary<(int, int), int> vis = new Dictionary<(int, int), int>();
+            List<List<char>> map = new List<List<char>>();
+            foreach (var l in line)
+                map.Add(l.ToList());
+
+            for (int x = 0; x < maxX; x++)
+            {
+                for (int y = 0; y < maxY; y++)
+                {
+                    if (map[y][x] == '.')
+                        continue;
+
+                    var count = 0;
+                    var rays = new List<double>();
+                    for (int x1 = 0; x1 < maxX; x1++)
+                    {
+                        for (int y1 = 0; y1 < maxY; y1++)
+                        {
+                            if (x == x1 && y == y1 || map[y1][x1] == '.')
+                                continue;
+
+                            var ray = Math.Atan2(x - x1, y - y1);
+                            if (!rays.Contains(ray))
+                            {
+                                rays.Add(ray);
+                                count++;
+                            }
+                        }
+                    }
+
+                    vis.Add((x, y), count);
+                }
+            }
+            var best_point = vis.Aggregate((x, y) => x.Value > y.Value ? x : y).Key;
+            var best_count = vis.Aggregate((x, y) => x.Value > y.Value ? x : y).Value;
+            part1 = best_count.ToString();
+
+            Dictionary<(int, int), double> vaporize = new Dictionary<(int, int), double>();
+            int x0 = best_point.Item1;
+            int y0 = best_point.Item2;
+            for (int x1 = 0; x1 < maxX; x1++)
+            {
+                for (int y1 = 0; y1 < maxY; y1++)
+                {
+                    if (x0 == x1 && y0 == y1 || map[y1][x1] == '.')
+                        continue;
+
+                    var ray = Math.Atan2(x0 - x1, y0 - y1);
+                    if (ray > 0)
+                        vaporize.Add((x1, y1), ray-(3.14*2));
+                    else
+                        vaporize.Add((x1, y1), ray);
+                }
+            }
+
+            var order = vaporize.OrderByDescending(x => x.Value).ThenBy(y => Math.Sqrt(Math.Pow(x0 - y.Key.Item1, 2) + Math.Pow(y0 - y.Key.Item2, 2))).ToList();
+            var removed = new List<KeyValuePair<(int, int), double>>();
+            while (order.Count != 0)
+            {
+                var angles = new List<double>();
+                for (int i = 0; i < order.Count; i++)
+                {
+                    if (angles.Contains(order.ElementAt(i).Value))
+                        continue;
+                    removed.Add(order.ElementAt(i));
+                    angles.Add(order.ElementAt(i).Value);
+
+                }
+                order = order.Except(removed).ToList();
+            }
+
+
+            part2 = (removed[199].Key.Item1 * 100 + removed[199].Key.Item2).ToString();
 
             Console.WriteLine("Day 10, Problem 1: " + part1);
             Console.WriteLine("Day 10, Problem 2: " + part2);
