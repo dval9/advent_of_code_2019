@@ -1156,7 +1156,7 @@ namespace advent_of_code_2019
 
             int map_size = 100;
             int facing = 0;
-            (int, int) pos = (map_size/2, map_size/2);
+            (int, int) pos = (map_size / 2, map_size / 2);
             int[,] map = new int[map_size, map_size];
             int[,] painted = new int[map_size, map_size];
             int count = 0;
@@ -1211,7 +1211,7 @@ namespace advent_of_code_2019
                 program = program.Append(0).ToArray();
 
             facing = 0;
-            pos = (map_size/2, map_size/2);
+            pos = (map_size / 2, map_size / 2);
             map = new int[map_size, map_size];
 
             input = new Queue<long>();
@@ -1576,11 +1576,95 @@ namespace advent_of_code_2019
         {
             string part1 = "";
             string part2 = "";
-            char[] delims = { ',' };
+            char[] delims = { '<', '>', '=', ',', ' ', 'x', 'y', 'z' };
             var line = File.ReadAllLines(__input);
+
+            ((int, int, int), (int, int, int))[] moons = new ((int, int, int), (int, int, int))[4];
+            int time = 0;
+
+            for (int i = 0; i < line.Length; i++)
+            {
+                var moon = line[i].Split(delims, StringSplitOptions.RemoveEmptyEntries);
+                moons[i] = ((int.Parse(moon[0]), int.Parse(moon[1]), int.Parse(moon[2])), (0, 0, 0));
+            }
+
+            //moons[0] = ((-8, -10, 0), (0, 0, 0));
+            //moons[1] = ((5, 5, 10), (0, 0, 0));
+            //moons[2] = ((2, -7, 3), (0, 0, 0));
+            //moons[3] = ((9, -8, -3), (0, 0, 0));
+
+            var te = 0;
+            var cycle = 0;
+            while (true)
+            {
+                for (int i = 0; i < moons.Length; i++)
+                {
+                    if (moons[(i + 1) % 4].Item1.Item1 > moons[i].Item1.Item1) { moons[i].Item2.Item1 += 1; }
+                    else if (moons[(i + 1) % 4].Item1.Item1 < moons[i].Item1.Item1) { moons[i].Item2.Item1 += -1; }
+                    if (moons[(i + 2) % 4].Item1.Item1 > moons[i].Item1.Item1) { moons[i].Item2.Item1 += 1; }
+                    else if (moons[(i + 2) % 4].Item1.Item1 < moons[i].Item1.Item1) { moons[i].Item2.Item1 += -1; }
+                    if (moons[(i + 3) % 4].Item1.Item1 > moons[i].Item1.Item1) { moons[i].Item2.Item1 += 1; }
+                    else if (moons[(i + 3) % 4].Item1.Item1 < moons[i].Item1.Item1) { moons[i].Item2.Item1 += -1; }
+
+                    if (moons[(i + 1) % 4].Item1.Item2 > moons[i].Item1.Item2) { moons[i].Item2.Item2 += 1; }
+                    else if (moons[(i + 1) % 4].Item1.Item2 < moons[i].Item1.Item2) { moons[i].Item2.Item2 += -1; }
+                    if (moons[(i + 2) % 4].Item1.Item2 > moons[i].Item1.Item2) { moons[i].Item2.Item2 += 1; }
+                    else if (moons[(i + 2) % 4].Item1.Item2 < moons[i].Item1.Item2) { moons[i].Item2.Item2 += -1; }
+                    if (moons[(i + 3) % 4].Item1.Item2 > moons[i].Item1.Item2) { moons[i].Item2.Item2 += 1; }
+                    else if (moons[(i + 3) % 4].Item1.Item2 < moons[i].Item1.Item2) { moons[i].Item2.Item2 += -1; }
+
+                    if (moons[(i + 1) % 4].Item1.Item3 > moons[i].Item1.Item3) { moons[i].Item2.Item3 += 1; }
+                    else if (moons[(i + 1) % 4].Item1.Item3 < moons[i].Item1.Item3) { moons[i].Item2.Item3 += -1; }
+                    if (moons[(i + 2) % 4].Item1.Item3 > moons[i].Item1.Item3) { moons[i].Item2.Item3 += 1; }
+                    else if (moons[(i + 2) % 4].Item1.Item3 < moons[i].Item1.Item3) { moons[i].Item2.Item3 += -1; }
+                    if (moons[(i + 3) % 4].Item1.Item3 > moons[i].Item1.Item3) { moons[i].Item2.Item3 += 1; }
+                    else if (moons[(i + 3) % 4].Item1.Item3 < moons[i].Item1.Item3) { moons[i].Item2.Item3 += -1; }
+
+                }
+                for (int i = 0; i < moons.Length; i++)
+                {
+                    moons[i].Item1.Item1 += moons[i].Item2.Item1;
+                    moons[i].Item1.Item2 += moons[i].Item2.Item2;
+                    moons[i].Item1.Item3 += moons[i].Item2.Item3;
+                }
+
+                var t = 0;
+                for (int i = 0; i < moons.Length; i++)
+                {
+                    var pe = Math.Abs(moons[i].Item1.Item1) + Math.Abs(moons[i].Item1.Item2) + Math.Abs(moons[i].Item1.Item3);
+                    var ke = Math.Abs(moons[i].Item2.Item1) + Math.Abs(moons[i].Item2.Item2) + Math.Abs(moons[i].Item2.Item3);
+                    t += pe * ke;
+                }
+                if (time == 999) { te = t; }
+                time++;
+
+                cycle = moons.Sum(x => Math.Abs(x.Item2.Item1) + Math.Abs(x.Item2.Item2) + Math.Abs(x.Item2.Item3));
+                if (cycle == 0) { cycle = time; }
+
+                if (time >= 1000 && cycle == time) { break; }
+
+            }
+            part1 = te.ToString();
+            part2 = (cycle * 2).ToString();
 
             Console.WriteLine("Day 12, Problem 1: " + part1);
             Console.WriteLine("Day 12, Problem 2: " + part2);
+        }
+
+        static int GCF(int a, int b)
+        {
+            while (b != 0)
+            {
+                int t = b;
+                b = a % b;
+                a = t;
+            }
+            return a;
+        }
+
+        static int LCM(int a, int b)
+        {
+            return (a / GCF(a, b)) * b;
         }
 
         /// <summary>
